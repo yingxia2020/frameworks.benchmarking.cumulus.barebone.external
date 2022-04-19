@@ -19,14 +19,12 @@ import os
 import logging
 
 from absl import flags
-from perfkitbenchmarker import errors
-from perfkitbenchmarker import data
 from perfkitbenchmarker import os_types
 from perfkitbenchmarker import vm_util
 from perfkitbenchmarker.linux_packages import INSTALL_DIR
 
 flags.DEFINE_string('emon_tarball', None,
-                    'Optional, path to emon package. eg --emon_tarball=/tmp/sep_private_5_19_linux_07062101c5153a9.tar.bz2')
+                    'Path to emon package. eg --emon_tarball=/tmp/sep_private_5_19_linux_07062101c5153a9.tar.bz2')
 flags.DEFINE_string('edp_events_file', None,
                     'Optional, path to edp event list. present in config/edp')
 flags.DEFINE_boolean('emon_post_process_skip', False,
