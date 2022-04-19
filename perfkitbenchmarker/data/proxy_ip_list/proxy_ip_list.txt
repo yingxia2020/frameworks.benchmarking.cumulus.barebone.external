@@ -1,0 +1,19 @@
+# reference: https://teams.microsoft.com/_?tenantId=46c98d88-e344-4ed4-8496-4ed7712e255d#/apps/a2da8768-95d5-419e-9441-3b539865b118/message?conversationId=19:df7e92edd482413d95bf0b3b88a831b9@thread.skype&conversationType=Group&messageId=1598024509586&replyChainId=1598024509586&itemName=AWS%20-%20How%20Do%20I&q=whitelist&maintainContext=false
+# => https://wiki.ith.intel.com/display/proxy/List+of+Proxy+Public+IP%27s+for+External+Whitelisting
+# Last updated 9/28/2020
+192.55.79.160/27
+198.175.68.32/27
+192.55.54.32/27
+192.55.55.32/27
+134.191.232.64/27
+134.191.233.192/27
+192.198.151.32/27
+134.191.227.32/27
+134.134.139.64/27
+134.134.137.64/27
+134.191.220.64/27
+134.191.221.64/27
+192.198.146.160/27
+192.198.147.160/27
+192.102.204.32/27
+192.55.46.32/27
