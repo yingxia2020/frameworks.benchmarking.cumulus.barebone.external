@@ -1,9 +1,8 @@
 from absl import flags
-from perfkitbenchmarker import configs, events, stages, vm_util, sample, errors
-from perfkitbenchmarker.linux_packages.intel_docker import PullDockerImages, InstallPrivateRegistry
+from perfkitbenchmarker import configs, events, stages, vm_util, sample
 from perfkitbenchmarker.linux_packages.habana import RegisterWithDocker, RegisterWithContainerD, RegisterKubernetesPlugins
 from perfkitbenchmarker.linux_packages import intel_k8s
-from posixpath import join, split
+from posixpath import join
 from uuid import uuid4
 from yaml import safe_load_all, dump_all
 import logging
@@ -71,6 +70,7 @@ flags.DEFINE_list("dpt_vm_groups", ["worker"], "Define the mapping of cluster-co
 flags.DEFINE_boolean("dpt_aptgetlock_workaround", True, "Work around the apt-get lock")
 flags.DEFINE_list("dpt_debug", [], "Set debug breakpoints")
 flags.DEFINE_list("dpt_trace_mode", [], "Specify the trace mode triple")
+flags.DEFINE_boolean("dpt_iwos_cloud", False, "Enable when IWOS running  in cloud")
 
 
 def _SetBreakPoint(breakpoint):
@@ -129,33 +129,6 @@ def _ReplaceImage(image):
     if image.startswith(r1):
       return image.replace(r1, registries[r1])
   return image
-
-
-def _IsRegistryImage(image):
-  for r1 in registries:
-    if image.startswith(r1):
-      return True
-  return False
-
-
-def _BypassIsInternalImage():
-  # workaround: bypass isIntenalImage
-  FLAGS.intel_internal_registry_key = "/"
-
-
-def _PullImage(vm, images):
-  priv_images = {}
-  pub_images = {}
-  for image in images:
-    if _IsRegistryImage(image):
-      priv_images[image] = 1
-    else:
-      pub_images[image] = 1
-  if priv_images:
-    _BypassIsInternalImage()
-    PullDockerImages(vm, priv_images)
-  if pub_images:
-    vm.RemoteCommand("sh -c 'sudo docker pull {}'".format(" ".join(pub_images)))
 
 
 def _WalkTo(node, name):
@@ -275,7 +248,7 @@ def _ModifyEnvs(spec, vimages):
 
 def _UpdateK8sConfig(controller0, workers, vimages):
   with open(FLAGS.dpt_kubernetes_yaml, "rt") as fd:
-    docs = list(safe_load_all(fd))
+    docs = [d for d in safe_load_all(fd) if d]
 
   images = {}
   for doc in docs:
@@ -284,20 +257,6 @@ def _UpdateK8sConfig(controller0, workers, vimages):
       if spec:
         _ScanImages(images, spec[c1])
 
-  if controller0.CLOUD != "Static":
-    if len(_UniqueVms(workers)) > 1:
-      vms = _UniqueVms(workers, controller0)
-      _BypassIsInternalImage()
-      registry_url = InstallPrivateRegistry(controller0, vms, images.keys())
-      if not registry_url.endswith("/"):
-        registry_url = registry_url + "/"
-
-      global registries
-      for r in registries:
-        registries[r] = registry_url
-    else:
-      _PullImage(workers[0]["vm"], images.keys())
-
   modified_docs = []
   for doc in docs:
     modified_docs.append(doc)
@@ -305,12 +264,12 @@ def _UpdateK8sConfig(controller0, workers, vimages):
     spec = _WalkTo(doc, "containers")
     if spec:
       _AddNodeAffinity(spec, workers)
-      _ModifyImageRef(spec["containers"], images, controller0.CLOUD != "Static")
+      _ModifyImageRef(spec["containers"], images, controller0.CLOUD != "Static" or FLAGS.dpt_iwos_cloud)
       _ModifyEnvs(spec["containers"], vimages)
 
     spec = _WalkTo(doc, "initContainers")
     if spec:
-      _ModifyImageRef(spec["initContainers"], images, controller0.CLOUD != "Static")
+      _ModifyImageRef(spec["initContainers"], images, controller0.CLOUD != "Static" or FLAGS.dpt_iwos_cloud)
       _ModifyEnvs(spec["initContainers"], vimages)
 
   modified_filename = FLAGS.dpt_kubernetes_yaml + ".mod.yaml"
@@ -342,12 +301,6 @@ def _AddNodeLabels(controller0, workers, vm):
   if labels and node:
     cmd = ["kubectl", "label", "--overwrite", "node", node] + [k + "=" + labels[k] for k in labels]
     controller0.RemoteCommand(" ".join(cmd))
-
-
-def _SaveRegistryMap():
-  global registries
-  it = iter(FLAGS.dpt_registry_map)
-  registries = dict(zip(it, it))
 
 
 def _GetController(vm_groups):
@@ -498,20 +451,20 @@ def Prepare(benchmark_spec):
   _ParseParams(FLAGS.dpt_tunables, benchmark_spec.tunable_parameters_metadata)
   tmp_dir = vm_util.GetTempDir()
 
-  _SaveRegistryMap()
   if FLAGS.dpt_docker_image:
     controller0 = _GetWorkers(benchmark_spec.vm_groups)[0]
     controller0.RemoteCommand("mkdir -p '{}'".format(tmp_dir))
     if controller0.CLOUD != "Static":
       if FLAGS.dpt_aptgetlock_workaround:
         _AptGetLockWA(controller0)
-      _PullImage(controller0, [FLAGS.dpt_docker_image] + FLAGS.dpt_docker_dataset)
 
     workers, vimages = _ParseClusterConfigs(benchmark_spec.vm_groups)
     _PrepareWorker(None, workers, controller0)
     if controller0.CLOUD != "Static":
       _SetBreakPoint("SetupVM")
       vm_util.RunThreaded(lambda vim1: _PrepareVM(vim1), vimages)
+      # Don't modify these logging info. Read by external procees to build ansible inventory for IWOS
+      logging.info(f"docker_pt VM Info: Worker {controller0.ip_address} {controller0.internal_ip}")
 
   if FLAGS.dpt_kubernetes_yaml:
     controller0 = _GetController(benchmark_spec.vm_groups)
@@ -524,6 +477,10 @@ def Prepare(benchmark_spec):
       workers = [vm1 for vm1 in workers if vm1 != controller0]
       taint = SUT_VM_CTR in benchmark_spec.vm_groups
       intel_k8s.InstallK8sCSP(controller0, workers, taint)
+      # Don't modify these logging info. Read by external procees to build ansible inventory for IWOS
+      logging.info(f"docker_pt VM Info: Controller {controller0.ip_address} {controller0.internal_ip}")
+      for worker in workers:
+        logging.info(f"docker_pt VM Info: Worker {worker.ip_address} {worker.internal_ip}")
 
     nodes = _GetNodes(controller0)
     workers, vimages = _ParseClusterConfigs(benchmark_spec.vm_groups, nodes)
@@ -602,7 +559,7 @@ def Run(benchmark_spec):
     controller0 = _GetWorkers(benchmark_spec.vm_groups)[0]
 
     options = FLAGS.dpt_docker_options.split(' ')
-    if controller0.CLOUD == "Static":
+    if controller0.CLOUD == "Static" and not FLAGS.dpt_iwos_cloud:
       options.extend(["--pull", "always"])
 
     containers = [FLAGS.dpt_namespace]
