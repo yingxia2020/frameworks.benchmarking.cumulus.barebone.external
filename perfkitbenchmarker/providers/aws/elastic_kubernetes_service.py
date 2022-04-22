@@ -214,9 +214,10 @@ class EksCluster(container_service.KubernetesCluster):
       group_id = json_output[0]['ID']
 
       CIDRs = vm_util.GetCIDRList(PROXY_FILE)
-      if len(CIDRs) == 0:
+      if CIDRs is None or len(CIDRs) == 0:
         logging.warning('Failed to add CIDR IP range of ingress SSH security group rules! No rules in "{}"!',
                         data.ResourcePath(PROXY_FILE))
+        return
 
       for cidr in CIDRs:
         cmd = aws.util.AWS_PREFIX + ['ec2', 'authorize-security-group-ingress',
