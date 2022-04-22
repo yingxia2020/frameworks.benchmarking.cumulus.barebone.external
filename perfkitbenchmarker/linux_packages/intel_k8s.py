@@ -96,7 +96,7 @@ def InstallK8sCSP(controller_vm, worker_vms, taint_controller=True):
   all_ips = [controller_vm.internal_ip]
   for vm in worker_vms:
     all_ips.append(vm.internal_ip)
-    if vm.OS_TYPE == os_types.UBUNTU2004 or vm.OS_TYPE == os_types.UBUNTU1804:
+    if 'ubuntu' in vm.OS_TYPE:
       vm.RemoteCommand("sudo apt-get update")
 
   vm = controller_vm

@@ -49,7 +49,7 @@ import six
 FLAGS = flags.FLAGS
 DEFAULT_USERNAME = 'perfkit'
 QUOTA_EXCEEDED_MESSAGE = 'Creation failed due to quota exceeded: '
-INTEL_PROXY_FILE = 'proxy_ip_list/proxy_ip_list.txt'
+PROXY_FILE = 'proxy_ip_list/proxy_ip_list.txt'
 
 
 def ValidateVmMetadataFlag(options_list):
@@ -1165,17 +1165,7 @@ class BaseVirtualMachine(BaseOsMixin, resource.BaseResource):
 
   def InsertProxyIPList(self):
     """Create a proxy server ip address list as source_range."""
-    source_range = []
-    abs_path = data.ResourcePath(INTEL_PROXY_FILE)
-    if not os.path.isfile(abs_path):
-      logging.info('Proxy server list file ({}) does not exist.'.format(abs_path))
-      return None
-    with open(abs_path) as f:
-      proxy_ip_list = [line.rstrip() for line in f]
-    for ip in proxy_ip_list:
-      if not ip.strip() == '' and ip[0].isdigit():
-        source_range.append(ip)
-    return source_range
+    return vm_util.GetCIDRList(PROXY_FILE)
 
   def AllowPort(self, start_port, end_port=None, source_range=None):
     """Opens the port on the firewall corresponding to the VM if one exists.

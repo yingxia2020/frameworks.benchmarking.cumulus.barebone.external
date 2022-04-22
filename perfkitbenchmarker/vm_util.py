@@ -116,6 +116,8 @@ flags.DEFINE_integer('ssh_server_alive_count_max', 10,
                      'Value for ssh -o ServerAliveCountMax. Use with '
                      '--ssh_server_alive_interval to configure how long to '
                      'wait for unresponsive servers.')
+flags.DEFINE_list('proxy_cidr_list', None,
+                  'List of permitted source IP CIDRs such as "3.140.220.0/24,3.150.110.0/24"')
 
 
 class IpAddressSubset(object):
@@ -744,3 +746,27 @@ def InstallRsync():
     IssueCommand("sudo yum install -y rsync".split())
   else:
     logging.warning("Not a supported OS, rsync is not installed. Please install it manually!")
+
+
+def GetCIDRList(file_path):
+  """Returns a list of CIDRs from runtime flag or filepath."""
+  if FLAGS.proxy_cidr_list is not None and len(FLAGS.proxy_cidr_list) > 0:
+      return FLAGS.proxy_cidr_list
+
+  cidr_list = []
+  proxy_server_ip_list_path = data.ResourcePath(file_path)
+  if not os.path.isfile(proxy_server_ip_list_path):
+    logging.info('file ({}) does not exist'.format(proxy_server_ip_list_path))
+    return None
+
+  with open(proxy_server_ip_list_path) as f:
+    proxy_ip_list = [line.rstrip() for line in f]
+
+  for ip in proxy_ip_list:
+    if not ip.strip() == '' and ip[0].isdigit():
+      cidr_list.append(ip)
+
+  if len(cidr_list) > 0:
+    return cidr_list
+
+  return None

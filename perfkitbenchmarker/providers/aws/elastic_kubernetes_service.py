@@ -38,7 +38,7 @@ from perfkitbenchmarker.providers.aws import util
 
 FLAGS = flags.FLAGS
 
-INTEL_PROXY_FILE = 'proxy_ip_list/proxy_ip_list.txt'
+PROXY_FILE = 'proxy_ip_list/proxy_ip_list.txt'
 
 
 class EksCluster(container_service.KubernetesCluster):
@@ -213,12 +213,10 @@ class EksCluster(container_service.KubernetesCluster):
                         "Missing security group id!")
       group_id = json_output[0]['ID']
 
-      proxy_server_ip_list_path = data.ResourcePath(INTEL_PROXY_FILE)
-
-      CIDRs = util.ReadCIDRList(proxy_server_ip_list_path)
+      CIDRs = vm_util.GetCIDRList(PROXY_FILE)
       if len(CIDRs) == 0:
         logging.warning('Failed to add CIDR IP range of ingress SSH security group rules! No rules in "{}"!',
-                        proxy_server_ip_list_path)
+                        data.ResourcePath(PROXY_FILE))
 
       for cidr in CIDRs:
         cmd = aws.util.AWS_PREFIX + ['ec2', 'authorize-security-group-ingress',

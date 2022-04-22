@@ -17,8 +17,6 @@
 
 import collections
 import json
-import logging
-import os
 import re
 import string
 from typing import Dict, Set
@@ -297,20 +295,3 @@ def AwsFilter(filter_keys_and_values):
   for name, value in sorted(filter_keys_and_values.items()):
     filters.append('Name={},Values={}'.format(name, value))
   return filters
-
-
-def ReadCIDRList(file_path):
-  """Returns a list of CIDRs from filepath."""
-  cidr_list = []
-  if not os.path.isfile(file_path):
-    logging.info('file ({}) does not exist'.format(file_path))
-    return None
-
-  with open(file_path) as f:
-    proxy_ip_list = [line.rstrip() for line in f]
-
-  for ip in proxy_ip_list:
-    if not ip.strip() == '' and ip[0].isdigit():
-      cidr_list.append(ip)
-
-  return cidr_list
