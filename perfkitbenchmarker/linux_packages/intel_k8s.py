@@ -5,7 +5,6 @@ import posixpath
 
 from perfkitbenchmarker import errors
 from perfkitbenchmarker.linux_packages import INSTALL_DIR
-from perfkitbenchmarker import os_types
 from perfkitbenchmarker import vm_util
 from absl import flags
 
@@ -96,8 +95,7 @@ def InstallK8sCSP(controller_vm, worker_vms, taint_controller=True):
   all_ips = [controller_vm.internal_ip]
   for vm in worker_vms:
     all_ips.append(vm.internal_ip)
-    if 'ubuntu' in vm.OS_TYPE:
-      vm.RemoteCommand("sudo apt-get update")
+    vm.Install('aufs-tools')
 
   vm = controller_vm
   vm.Install('docker_ce')
