@@ -104,7 +104,6 @@ from perfkitbenchmarker import traces
 from perfkitbenchmarker import version
 from perfkitbenchmarker import vm_util
 from perfkitbenchmarker import windows_benchmarks
-from perfkitbenchmarker import intel_publisher
 from perfkitbenchmarker.configs import benchmark_config_spec
 from perfkitbenchmarker.linux_benchmarks import cluster_boot_benchmark
 from perfkitbenchmarker.linux_benchmarks import cuda_memcpy_benchmark
@@ -1379,10 +1378,6 @@ def RunBenchmarkTask(
     # Unset run_uri so the config value takes precedence.
     FLAGS['run_uri'].present = 0
 
-  # Start Intel Contribution
-  collector = intel_publisher.IntelSampleCollector()
-  # End Intel Contribution
-
   zone_retry_manager = ZoneRetryManager()
   # Set the run count.
   max_run_count = 1 + _MAX_RETRIES.value
@@ -1405,9 +1400,7 @@ def RunBenchmarkTask(
                      'Starting benchmark %s attempt %s of %s' + '\n' + '-' * 85)
     logging.info(run_start_msg, benchmark_info, current_run_count + 1,
                  max_run_count)
-    # Start Intel Contribution
-    collector = intel_publisher.IntelSampleCollector()
-    # End Intel Contribution
+    collector = publisher.SampleCollector()
 
     # Make a new copy of the benchmark_spec for each run since currently a
     # benchmark spec isn't compatible with multiple runs. In particular, the
@@ -1417,9 +1410,6 @@ def RunBenchmarkTask(
     result_specs.append(spec_for_run)
     try:
       RunBenchmark(spec_for_run, collector)
-      # Added by Intel
-      collector.IntelPublishSamples()
-      # End added by Intel
     except BaseException as e:  # pylint: disable=broad-except
       logging.exception('Exception running benchmark')
       msg = f'Benchmark {benchmark_info} failed.'
@@ -1685,15 +1675,6 @@ def RunBenchmarks():
     archive.ArchiveRun(vm_util.GetTempDir(), FLAGS.archive_bucket,
                        gsutil_path=FLAGS.gsutil_path,
                        prefix=FLAGS.run_uri + '_')
-
-  # Start Intel Contribution
-  if intel_publisher.IntelSampleCollector.PublishEnabled() and FLAGS.intel_publisher_s3_archive_bucket_url:
-    patterns_to_ignore = []
-    # If emon is enabled and user selects not to publish EDP data, add it to the patterns_to_ignore list
-    if not FLAGS.edp_publish:
-       patterns_to_ignore.append(EMON_EDP_TARBALL)
-    intel_publisher.ArchiveToS3(vm_util.GetTempDir(), FLAGS.run_uri + '.zip', patterns_to_ignore)
-  # End Intel Contribution
 
   # Write completion status file(s)
   completion_status_file_name = (
