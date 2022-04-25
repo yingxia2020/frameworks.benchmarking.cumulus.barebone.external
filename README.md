@@ -6,6 +6,6 @@ python3 pkb.py --trace_vm_groups=worker --trace_allow_benchmark_control --benchm
 ### To test external release inside intel network:
 1. Update proxy_ip_list.txt file under the directory of  perfkitbenchmarker/data/proxy_ip_list
 
-2. Use runtime flag, --proxy_cidr_list="134.134.0.0/16,192.55.0.0/16,134.191.0.0/16". If this flag is set, it will overwrite what's inside proxy_ip_list.txt file. i
+2. Use runtime flag, --proxy_cidr_list="134.134.0.0/16,192.55.0.0/16,134.191.0.0/16". If this flag is set, it will overwrite what's inside proxy_ip_list.txt file.
 
 #### Note: If use Intel CSP account, please make sure proxy CIDRs are set either way to avoid warnings from Intel IT.

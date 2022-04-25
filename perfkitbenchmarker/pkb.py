@@ -871,10 +871,6 @@ def DoPreparePhase(spec, timer):
     time.sleep(FLAGS.after_prepare_sleep_time)
   events.after_phase.send(stages.PREPARE, benchmark_spec=spec)
 
-  # ### Added by Cumulus for svrinfo b1 ####
-  events.after_phase.send(stages.PREPARE, benchmark_spec=spec)
-  # ### End Cumulus svrinfo block 1 ####
-
   interrupt_checker.EndCheckInterruptThread()
 
 
