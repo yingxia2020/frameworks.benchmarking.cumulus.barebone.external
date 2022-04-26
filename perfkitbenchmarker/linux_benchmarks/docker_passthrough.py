@@ -1,8 +1,9 @@
 from absl import flags
-from perfkitbenchmarker import configs, events, stages, vm_util, sample
+from perfkitbenchmarker import configs, events, stages, vm_util, sample, errors
+from perfkitbenchmarker.linux_packages.intel_docker import PullDockerImages, InstallPrivateRegistry
 from perfkitbenchmarker.linux_packages.habana import RegisterWithDocker, RegisterWithContainerD, RegisterKubernetesPlugins
 from perfkitbenchmarker.linux_packages import intel_k8s
-from posixpath import join
+from posixpath import join, split
 from uuid import uuid4
 from yaml import safe_load_all, dump_all
 import logging
@@ -131,6 +132,33 @@ def _ReplaceImage(image):
   return image
 
 
+def _IsRegistryImage(image):
+  for r1 in registries:
+    if image.startswith(r1):
+      return True
+  return False
+
+
+def _BypassIsInternalImage():
+  # workaround: bypass isIntenalImage
+  FLAGS.intel_internal_registry_key = "/"
+
+
+def _PullImage(vm, images):
+  priv_images = {}
+  pub_images = {}
+  for image in images:
+    if _IsRegistryImage(image):
+      priv_images[image] = 1
+    else:
+      pub_images[image] = 1
+  if priv_images:
+    _BypassIsInternalImage()
+    PullDockerImages(vm, priv_images)
+  if pub_images:
+    vm.RemoteCommand("sh -c 'sudo docker pull {}'".format(" ".join(pub_images)))
+
+
 def _WalkTo(node, name):
   try:
     if name in node:
@@ -257,6 +285,21 @@ def _UpdateK8sConfig(controller0, workers, vimages):
       if spec:
         _ScanImages(images, spec[c1])
 
+  if controller0.CLOUD != "Static":
+    if len(_UniqueVms(workers)) > 1:
+      vms = _UniqueVms(workers, controller0)
+      _BypassIsInternalImage()
+      registry_url = InstallPrivateRegistry(controller0, vms, images.keys())
+      if not registry_url.endswith("/"):
+        registry_url = registry_url + "/"
+      # Don't modify this logging info. Read by external procees to know if registry has changed
+      logging.info(f"docker_pt Registry URL: {registry_url}")
+      global registries
+      for r in registries:
+        registries[r] = registry_url
+    else:
+      _PullImage(workers[0]["vm"], images.keys())
+
   modified_docs = []
   for doc in docs:
     modified_docs.append(doc)
@@ -301,6 +344,12 @@ def _AddNodeLabels(controller0, workers, vm):
   if labels and node:
     cmd = ["kubectl", "label", "--overwrite", "node", node] + [k + "=" + labels[k] for k in labels]
     controller0.RemoteCommand(" ".join(cmd))
+
+
+def _SaveRegistryMap():
+  global registries
+  it = iter(FLAGS.dpt_registry_map)
+  registries = dict(zip(it, it))
 
 
 def _GetController(vm_groups):
@@ -451,12 +500,14 @@ def Prepare(benchmark_spec):
   _ParseParams(FLAGS.dpt_tunables, benchmark_spec.tunable_parameters_metadata)
   tmp_dir = vm_util.GetTempDir()
 
+  _SaveRegistryMap()
   if FLAGS.dpt_docker_image:
     controller0 = _GetWorkers(benchmark_spec.vm_groups)[0]
     controller0.RemoteCommand("mkdir -p '{}'".format(tmp_dir))
     if controller0.CLOUD != "Static":
       if FLAGS.dpt_aptgetlock_workaround:
         _AptGetLockWA(controller0)
+      _PullImage(controller0, [FLAGS.dpt_docker_image] + FLAGS.dpt_docker_dataset)
 
     workers, vimages = _ParseClusterConfigs(benchmark_spec.vm_groups)
     _PrepareWorker(None, workers, controller0)

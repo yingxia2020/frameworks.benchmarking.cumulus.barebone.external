@@ -19,12 +19,15 @@ import os
 import logging
 
 from absl import flags
+from perfkitbenchmarker import errors
+from perfkitbenchmarker import data
 from perfkitbenchmarker import os_types
 from perfkitbenchmarker import vm_util
+from perfkitbenchmarker.linux_packages import intel_s3_transfer
 from perfkitbenchmarker.linux_packages import INSTALL_DIR
 
 flags.DEFINE_string('emon_tarball', None,
-                    'Path to emon package. eg --emon_tarball=/tmp/sep_private_5_19_linux_07062101c5153a9.tar.bz2')
+                    'Optional, path to emon package. eg --emon_tarball=/tmp/sep_private_5_19_linux_07062101c5153a9.tar.bz2')
 flags.DEFINE_string('edp_events_file', None,
                     'Optional, path to edp event list. present in config/edp')
 flags.DEFINE_boolean('emon_post_process_skip', False,
@@ -55,6 +58,13 @@ PKB_RUBY_FILE = '{0}/pkb_ruby_file'.format(EMON_MAIN_DIR)
 PKB_POSTPROCESS_FILE = '{0}/pkb_postprocess_packages_file'.format(EMON_MAIN_DIR)
 
 
+def _GetEmonTarball():
+  if FLAGS.emon_package_version:
+    return "sep_private_" + FLAGS.emon_package_version + ".tar.bz2"
+  else:
+    return EMON_SOURCE_TARBALL_DEFAULT
+
+
 def _GetAbsPath(path):
   absPath = os.path.abspath(os.path.expanduser(path))
   if not os.path.isfile(absPath):
@@ -64,6 +74,9 @@ def _GetAbsPath(path):
 
 
 def _TransferEMONTarball(vm):
+  # get emon_tarball file name
+  emon_tarball = _GetEmonTarball()
+
   if FLAGS.emon_tarball:
     logging.info("Copying local emon tarball ({}) to remote SUT location ({})"
                  .format(FLAGS.emon_tarball, INSTALL_DIR))
@@ -71,7 +84,13 @@ def _TransferEMONTarball(vm):
     _, emon_tarball = os.path.split(FLAGS.emon_tarball)
     vm.RemoteCopy(tarFile_path, INSTALL_DIR, True)
   else:
-    raise RuntimeError('FLAG emon_tarball could not be empty')
+    download_success = False
+    s3_image_path = posixpath.join(EMON_SOURCE_TARBALL_DEFAULT_LOCATION_S3_BUCKET, emon_tarball)
+    target = posixpath.join(INSTALL_DIR, emon_tarball)
+    download_success = intel_s3_transfer.GetFileFromS3(vm, s3_image_path, target)
+
+    if not download_success:
+      raise RuntimeError(f'Failed to download EMON tarball ({emon_tarball}). Quit!')
 
   return emon_tarball
 
