@@ -12,13 +12,13 @@ from perfkitbenchmarker import trace_util
 from absl import flags
 from perfkitbenchmarker import vm_util
 
-SVRINFO_DIRECTORY_NAME = "svr_info"
-SVRINFO_ARCHIVE_NAME = 'svr_info.tgz'
-SVRINFO_ARCHIVE_URL = "https://cumulus.s3.us-east-2.amazonaws.com/svr_info/svr_info_internal.tgz"
+SVRINFO_BINARY_NAME = "svr-info"
+SVRINFO_DIRECTORY_NAME = "svr-info"
+SVRINFO_ARCHIVE_URL = "https://cumulus.s3.us-east-2.amazonaws.com/svr_info/svr-info-internal-2.0.0.tgz"
 
 flags.DEFINE_boolean('svrinfo', True,
                      'Run svrinfo on VMs.')
-flags.DEFINE_string('svrinfo_flags', '--format all --memory',
+flags.DEFINE_string('svrinfo_flags', '-format all',
                     'Command line flags that get passed to svr_info.')
 flags.DEFINE_string('svrinfo_local_path', None,
                     'Local path where svr_info is/ will be installed.')
@@ -83,21 +83,21 @@ def _Run(vm, benchmark_spec):
   output_dir = posixpath.join(vm_util.GetTempDir(), vm.name + '-svrinfo')
   vm_util.IssueCommand(["mkdir", "-p", output_dir])
   command = [
-      posixpath.join(".", SVRINFO_DIRECTORY_NAME)
+      posixpath.join(".", SVRINFO_BINARY_NAME)
   ]
   command.extend(FLAGS.svrinfo_flags.split())
   command.extend([
-      "--output",
+      "-output",
       output_dir,
-      "--ip",
+      "-ip",
       vm.ip_address,
-      "--port",
+      "-port",
       str(vm.ssh_port),
-      "--user",
+      "-user",
       vm.user_name])
   key = vm.ssh_private_key if vm.is_static else vm_util.GetPrivateKeyPath()
   if key is not None:
-      command.extend(["--key", key])
+      command.extend(["-key", key])
   vm_util.IssueCommand(command, cwd=posixpath.join(_GetLocalInstallPath(), SVRINFO_DIRECTORY_NAME), timeout=None)
 
 

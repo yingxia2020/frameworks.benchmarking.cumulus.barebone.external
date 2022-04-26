@@ -80,7 +80,7 @@ class Platform(IntelPublisherDocument):
     self.os_name = vm.os_info
     self.server_info_html_url = ""
     self.ip_address = None
-    self.memory = "{} GB".format(int(vm.total_memory_kb / 1000 / 1000))
+    self.memory = "{:.2f} GB".format(float(vm.total_memory_kb / 1000 / 1000))
     self.memory_spec = None
     self.sut_metadata_uri = None
     self.cpu_rolling_avg_5m = None
@@ -146,6 +146,7 @@ class Platform(IntelPublisherDocument):
     logging.info(f'Best rolling average for a {window_duration}s window was {best_window_avg_value}')
 
   def AddSvrinfo(self, pkb_dir, ip_address, s3_bucket_url):
+    self.ip_address = ip_address
     json_path = self.GetLocalSvrinfoFilename(pkb_dir, self.pkb_name, ip_address, '.json')
     self.server_info_html_url = os.path.join(s3_bucket_url, self.pkb_name + '-svrinfo.html')
     try:
@@ -153,34 +154,43 @@ class Platform(IntelPublisherDocument):
         self.server_info = json.load(f)
     except Exception as err:
       logging.error("Encountered exception '{}' while attempting read and parse svr_info.".format(err))
-    self.ip_address = ip_address
-    cpu = self.server_info.get('cpu', {})
-    self.cpu_model = cpu.get('Model Name', None)
-    self.num_of_sockets = int(cpu.get('Sockets', 0)) or \
-        int(cpu.get('Socket(s)', 0))
-    self.microarchitecture = cpu.get('Microarchitecture')
+    self.cpu_model = self.SvrinfoValue("CPU", "CPU Model")
+    logging.info("cpu model: %s", self.cpu_model)
+    self.num_of_sockets = int(self.SvrinfoValue("CPU", "Sockets", "0"))
+    logging.info("num sockets: %s", self.num_of_sockets)
+    self.microarchitecture = self.SvrinfoValue("CPU", "Microarchitecture")
+    logging.info("microarch: %s", self.microarchitecture)
     self.frequency = \
-        "{} (Base), {} (Max), {} (All-core Max)".format(cpu.get('Base Frequency', '-'),
-                                                        cpu.get('Maximum Frequency', '-'),
-                                                        cpu.get('All-core Maximum Frequency', '-')) \
-        if any((cpu.get('Base Frequency'), cpu.get('Maximum Frequency'), cpu.get('All-core Maximum Frequency'))) else None
-    self.manufacturer = self.server_info.get('sysd', {}).get('Manufacturer', None)
-    self.product_name = self.server_info.get('sysd', {}).get('Product Name', None)
-    self.memory_spec = self._ParseSvrinfoDIMMs(self.server_info.get('dimms', {}))
+        "{} (Base), {} (Max), {} (All-core Max)".format(self.SvrinfoValue("CPU", 'Base Frequency', '-'),
+                                                        self.SvrinfoValue("CPU", 'Maximum Frequency', '-'),
+                                                        self.SvrinfoValue("CPU", 'All-core Maximum Frequency', '-')) \
+        if any((self.SvrinfoValue("CPU", 'Base Frequency'), self.SvrinfoValue("CPU", 'Maximum Frequency'), self.SvrinfoValue("CPU", 'All-core Maximum Frequency'))) else None
+    logging.info("frequency: %s", self.frequency)
+    self.manufacturer = self.SvrinfoValue("System", "Manufacturer")
+    logging.info("manufacturer: %s", self.manufacturer)
+    self.product_name = self.SvrinfoValue("System", "Product Name")
+    logging.info("product name: %s", self.product_name)
+    self.memory_spec = self.SvrinfoValue("Memory", "Installed Memory")
+    logging.info("memory spec: %s", self.memory_spec)
 
-  @staticmethod
-  def _ParseSvrinfoDIMMs(dimms):
-    configs = {}
-    for num, config in dimms.items():
-      if 'GB' in config.get('Size', ""):
-        key = '{size} {type} {speed}'.format(size=config.get('Size', ''),
-                                             type=config.get('Type', ''),
-                                             speed=config.get('Speed', ''))
-        if key not in configs:
-          configs[key] = 0
-        configs[key] += 1
-    return ','.join(['{} x {}'.format(num, desc) for desc, num in configs.items()])
-
+  def SvrinfoValue(self, table_name, value_name, no_value=""):
+    value = no_value
+    for table in self.server_info:
+      if table["Name"] == table_name:
+        try:
+          value_index = table["AllHostValues"][0]["ValueNames"].index(value_name)
+          value = table["AllHostValues"][0]["Values"][0][value_index]
+        except ValueError as err:
+          logging.error("Did not find svr_info value '{}' in the '{}' table, {}".format(value_name, table_name, err))
+          return
+        except IndexError as err:
+          logging.error("Unexpected svr_info json format, {}".format(err))
+          return
+        except KeyError as err:
+          logging.error("Unexpected svr_info json format, {}".format(err))
+          return
+        break
+    return value
 
 
   @staticmethod
