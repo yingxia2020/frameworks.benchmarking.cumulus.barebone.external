@@ -1,9 +1,9 @@
 from absl import flags
-from perfkitbenchmarker import configs, events, stages, vm_util, sample, errors
+from perfkitbenchmarker import configs, events, stages, vm_util, sample
 from perfkitbenchmarker.linux_packages.intel_docker import PullDockerImages, InstallPrivateRegistry
 from perfkitbenchmarker.linux_packages.habana import RegisterWithDocker, RegisterWithContainerD, RegisterKubernetesPlugins
 from perfkitbenchmarker.linux_packages import intel_k8s
-from posixpath import join, split
+from posixpath import join
 from uuid import uuid4
 from yaml import safe_load_all, dump_all
 import logging
@@ -139,11 +139,6 @@ def _IsRegistryImage(image):
   return False
 
 
-def _BypassIsInternalImage():
-  # workaround: bypass isIntenalImage
-  FLAGS.intel_internal_registry_key = "/"
-
-
 def _PullImage(vm, images):
   priv_images = {}
   pub_images = {}
@@ -153,7 +148,6 @@ def _PullImage(vm, images):
     else:
       pub_images[image] = 1
   if priv_images:
-    _BypassIsInternalImage()
     PullDockerImages(vm, priv_images)
   if pub_images:
     vm.RemoteCommand("sh -c 'sudo docker pull {}'".format(" ".join(pub_images)))
@@ -288,11 +282,10 @@ def _UpdateK8sConfig(controller0, workers, vimages):
   if controller0.CLOUD != "Static":
     if len(_UniqueVms(workers)) > 1:
       vms = _UniqueVms(workers, controller0)
-      _BypassIsInternalImage()
       registry_url = InstallPrivateRegistry(controller0, vms, images.keys())
       if not registry_url.endswith("/"):
         registry_url = registry_url + "/"
-      # Don't modify this logging info. Read by external procees to know if registry has changed
+      # Don't modify this logging info. Read by external process to know if registry has changed
       logging.info(f"docker_pt Registry URL: {registry_url}")
       global registries
       for r in registries:

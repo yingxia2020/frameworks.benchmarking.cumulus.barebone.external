@@ -13,9 +13,6 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("intel_internal_registry_key", "amr-registry",
-                    "Keyword of Intel internal docker registry name. "
-                    "Use it to decide if docker image is internal or not.")
 flags.DEFINE_boolean('intel_docker_pre_install', False,
                      'Whether to install docker and Intel CA on host machine. '
                      'Usually this step only needs to be run once on host. '
@@ -52,11 +49,6 @@ def _SupportedSFRepo(image_name):
     if repo in image_name:
       return True
   return False
-
-
-# If docker image is Intel internal image
-def IsInternalImage(image):
-  return FLAGS.intel_internal_registry_key in image
 
 
 # Install pre-requirements on control machine, only run one time
@@ -99,12 +91,6 @@ def PullDockerImages(vms, images):
   """
   Pull docker images and copy to remote machines
   """
-  # Check input image names
-  for image in images:
-    if not IsInternalImage(image):
-      raise errors.Benchmarks.PrepareException(
-          'Only Docker images hosted on Intel internal registry are supported!')
-
   if FLAGS.intel_docker_pre_install:
     PreInstall()
 
