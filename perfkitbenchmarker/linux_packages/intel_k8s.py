@@ -21,7 +21,7 @@ flags.DEFINE_string('intel_k8s_nfd_version', '0.10.1',
 flags.DEFINE_enum('intel_k8s_kubespray_version', '2.17.1',
                   ['2.17.1', '2.16.0'],
                   'Specify the Kubespray version, [2.17.1, 2.16.0] are supported now')
-flags.DEFINE_enum('intel_k8s_network_plugin', 'calico',
+flags.DEFINE_enum('intel_k8s_network_plugin', 'flannel',
                   ['cilium', 'calico', 'weave', 'flannel'],
                   'K8s network plugin types. 4 plugin types are supported now')
 flags.DEFINE_string('intel_k8s_cni_mtu', None, 'CNI custom MTU value')
@@ -41,7 +41,6 @@ K8S_CLUSTER_YAML = "k8s-cluster.yml"
 K8S_CLUSTER_YAML_DIR = "installk8scsp/kubespray/inventory/cumulus/group_vars/k8s_cluster"
 K8S_ROLES_NETWORK_PLUGIN_DIR = "installk8scsp/kubespray/roles/network_plugin"
 K8S_CNI_SETTING = "kube_network_plugin: "
-WEAVE_SETTING = "weave"
 FLANNEL_SETTING = "flannel"
 CILIUM_SETTING = "cilium"
 
@@ -140,10 +139,10 @@ def InstallK8sCSP(controller_vm, worker_vms, taint_controller=True):
   vm.RemoteCommand("cd {0} && tar xfz {1}".format(INSTALL_DIR, _GetTarfileName()))
 
   # Update k8s CNI
-  if FLAGS.intel_k8s_network_plugin != WEAVE_SETTING:
+  if FLAGS.intel_k8s_network_plugin != FLANNEL_SETTING:
     config_path = posixpath.join(INSTALL_DIR, K8S_CLUSTER_YAML_DIR)
     logging.info(config_path)
-    orig_setting = K8S_CNI_SETTING + WEAVE_SETTING
+    orig_setting = K8S_CNI_SETTING + FLANNEL_SETTING
     mod_setting = K8S_CNI_SETTING + FLAGS.intel_k8s_network_plugin
     vm.RemoteCommand(f"cd {config_path} && sed -i 's/{orig_setting}/{mod_setting}/' {K8S_CLUSTER_YAML}")
 
