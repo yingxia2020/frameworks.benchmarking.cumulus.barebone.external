@@ -42,6 +42,8 @@ flags.DEFINE_string(
     'Default: run temporary directory.')
 flags.DEFINE_boolean('sar_publish', True,
                      'Whether to publish average sar statistics.')
+flags.DEFINE_string('sar_flags', '-u',
+                    'Command line flags that get passed to sar such as "-m ALL".')
 FLAGS = flags.FLAGS
 
 
@@ -63,6 +65,10 @@ def _AddStealResults(metadata, output, samples):
     output: the output of the stress-ng benchmark.
     samples: list of samples to return.
   """
+  # Only parse results file if run with '-u' option
+  if FLAGS.sar_flags != '-u':
+      return
+
   output_lines = output.splitlines()
 
   for line in output_lines:
@@ -100,8 +106,9 @@ class _SarCollector(base_collector.BaseCollector):
     vm.InstallPackages('sysstat')
 
   def _CollectorRunCommand(self, vm, collector_file):
-    cmd = ('sar -u {sar_interval} {sar_samples} > {output} 2>&1 & '
+    cmd = ('sar {sar_flags} {sar_interval} {sar_samples} > {output} 2>&1 & '
            'echo $!').format(
+               sar_flags=FLAGS.sar_flags,
                output=collector_file,
                sar_interval=FLAGS.sar_interval,
                sar_samples=FLAGS.sar_samples if FLAGS.sar_samples else '')
