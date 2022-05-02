@@ -16,6 +16,7 @@
 
 
 import contextlib
+import ipaddress
 import logging
 import os
 import platform
@@ -28,6 +29,7 @@ import tempfile
 import threading
 import time
 from typing import Callable, Dict, Iterable, Optional, Tuple
+import urllib.request
 
 from absl import flags
 import jinja2
@@ -769,4 +771,18 @@ def GetCIDRList(file_path):
   if len(cidr_list) > 0:
     return cidr_list
 
-  return None
+  return GetExternalIPCIDR()
+
+
+def GetExternalIPCIDR():
+    """Get host machine external IP address and return its corresponding CIDR"""
+    external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+    logging.info(f'External IP of host machine: {external_ip}')
+    tokens = external_ip.split('.')
+    tokens[3] = '0'
+    startip = ipaddress.IPv4Address('.'.join(tokens))
+    tokens[3] = '255'
+    endip = ipaddress.IPv4Address('.'.join(tokens))
+    cidr_list = [str(ipaddr) for ipaddr in ipaddress.summarize_address_range(startip, endip)]
+
+    return cidr_list
