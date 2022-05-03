@@ -45,11 +45,16 @@ class _SvrinfoCollector(object):
         vm_util.IssueCommand(["mkdir", "-p", install_dir])
         svr_info_archive = _GetLocalArchive()
         vm_util.IssueCommand(["tar", "-C", install_dir, "-xf", svr_info_archive])
-      # run svr_info
-      vm_util.RunThreaded(lambda vm: _Run(vm, benchmark_spec), vms)
-      # do the cleanups if really needed
-      if not FLAGS.trace_skip_cleanup:
-        vm_util.IssueCommand(["rm", "-rf", install_dir])
+
+      try:
+        # run svr_info
+        vm_util.RunThreaded(lambda vm: _Run(vm, benchmark_spec), vms)
+      except Exception:
+        raise
+      finally:
+        # always do the cleanups no matter run fail or not if skip_cleanup is not set
+        if not FLAGS.trace_skip_cleanup:
+          vm_util.IssueCommand(["rm", "-rf", install_dir])
 
 
 def _GetLocalInstallPath():
