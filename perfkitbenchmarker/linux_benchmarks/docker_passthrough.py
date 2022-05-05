@@ -415,6 +415,16 @@ def _SetupHabanaWorker(controller0, workers, vm):
           return
 
 
+# Use aws inferentia for ai workload, need to install neuron runtime driver in vm firstly.
+def _SetupInferentiaWorker(controller0, workers, vm):
+  for worker in workers:
+    if worker["vm"] == vm:
+      for k in worker["labels"]:
+        if k.startswith("HAS-SETUP-INFERENTIA-") and worker["labels"][k] == "required":
+          vm.Install("inferentia")
+          return
+
+
 def _SetupHabanaController(controller0, workers):
   for worker in workers:
     for k in worker["labels"]:
@@ -435,6 +445,7 @@ def _PrepareWorker(controller0, workers, vm):
   _SetHugePages(workers, vm, controller0 is not None)
   _ProbeModules(workers, vm)
   _SetupHabanaWorker(controller0, workers, vm)
+  _SetupInferentiaWorker(controller0, workers, vm)
   if controller0:
     _AddNodeLabels(controller0, workers, vm)
 
