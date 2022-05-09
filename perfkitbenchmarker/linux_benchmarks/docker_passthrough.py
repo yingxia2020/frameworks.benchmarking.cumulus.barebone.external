@@ -382,7 +382,7 @@ def _SetHugePages(workers, vm, ifkubelet):
         cmd = ["echo", str(reqs[size]), "|", "sudo", "tee", HUGEPAGE_NR.format(size)]
         vm.RemoteCommand(" ".join(cmd))
     except Exception as e:
-      logging.warning('Exception: Hugepage %s: %s', str(size), str(e))
+      logging.warning('Hugepage Exception: %s: %s', str(size), str(e))
 
   if ifkubelet:
     vm.RemoteCommand("sudo systemctl restart kubelet")
@@ -462,7 +462,7 @@ def _PrepareVM(vimage):
         vm1.RemoteCommand("cd /opt/pkb/vmsetup && sudo tar xfz ../{}.tgz && sudo ./setup.sh {}".format(setup, " ".join(FLAGS.dpt_script_args)))
         break
       except Exception as e:
-        logging.warning("vm setup failed: %s", str(e))
+        logging.warning("VM Setup Exception: %s", str(e))
       vm1.RemoteCommand("sleep 10s", ignore_failure=True)
       vm1.WaitForBootCompletion()
 
@@ -576,7 +576,7 @@ def _PullExtractLogs(controller0, pods, remote_logs_dir):
     except Exception as e:
       estr = str(e)
   if estr:
-    raise Exception("Exception in extracting logs: " + estr)
+    raise Exception("ExtractLogs Exception: " + estr)
 
 
 def _TraceByTime(benchmark_spec, controller0):
@@ -625,32 +625,40 @@ def Run(benchmark_spec):
       containers.append(container_id)
       options.extend(["--volumes-from", container_id])
 
+    _SetBreakPoint("ScheduleExec")
     cmd = ["sudo", "docker", "run", "--name", FLAGS.dpt_namespace, "--rm", "--detach"] + options + \
           [_ReplaceImage(FLAGS.dpt_docker_image)]
     controller0.RemoteCommand(" ".join(cmd))
-    _SetBreakPoint("DockerRun")
 
     if events.start_trace.receivers:
-      if not FLAGS.dpt_trace_mode:
-        events.start_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+      try:
+        if not FLAGS.dpt_trace_mode:
+          events.start_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
 
-      elif FLAGS.dpt_trace_mode[0] == "roi":
-        _TraceByROI(benchmark_spec, controller0, timeout[0],
-                    f"sudo docker logs -f {FLAGS.dpt_namespace}")
+        elif FLAGS.dpt_trace_mode[0] == "roi":
+          _TraceByROI(benchmark_spec, controller0, timeout[0],
+                      f"sudo docker logs -f {FLAGS.dpt_namespace}")
 
-      elif FLAGS.dpt_trace_mode[0] == "time":
-        _TraceByTime(benchmark_spec, controller0)
+        elif FLAGS.dpt_trace_mode[0] == "time":
+          _TraceByTime(benchmark_spec, controller0)
+      except Exception as e:
+        logging.warning("Trace Exception: %s", str(e))
+        _SetBreakPoint("TraceFailed")
 
     pods = [FLAGS.dpt_namespace]
     try:
+      _SetBreakPoint("ExtractLogs")
       controller0.RemoteCommand("timeout {}s sudo docker exec {} sh -c 'cat /export-logs' > {}".format(timeout[0], FLAGS.dpt_namespace, join(tmp_dir, LOGS_TARFILE.format(pods[0]))))
       pull_logs = True
     except Exception as e:
-      logging.fatal("Exception: %s", str(e))
-      _SetBreakPoint("DockerExecFailed")
+      logging.fatal("ExtractLogs Exception: %s", str(e))
+      _SetBreakPoint("ExtractLogsFailed")
 
     if events.start_trace.receivers and (not FLAGS.dpt_trace_mode):
-      events.stop_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+      try:
+        events.stop_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+      except:
+        pass
 
     controller0.RemoteCommand("sudo docker logs {}".format(FLAGS.dpt_namespace),
                               ignore_failure=True, should_log=True)
@@ -661,10 +669,10 @@ def Run(benchmark_spec):
     controller0 = _GetController(benchmark_spec.vm_groups)
     remote_yaml_file = join(tmp_dir, KUBERNETES_CONFIG)
 
+    _SetBreakPoint("ScheduleExec")
     controller0.RemoteCommand(f"kubectl create namespace {FLAGS.dpt_namespace}")
     controller0.RemoteCommand(f"kubectl label namespace {FLAGS.dpt_namespace} {SF_NS_LABEL}")
     controller0.RemoteCommand(f"kubectl create --namespace={FLAGS.dpt_namespace} -f {remote_yaml_file}")
-    _SetBreakPoint("KubectlApply")
 
     try:
       controller0.RemoteCommand("timeout {0}s sh -c 'q=0;until kubectl --namespace={1} wait pod --all --for=condition=Ready --timeout=1s 1>/dev/null 2>&1; do if kubectl --namespace={1} get pod -o json | grep -q Unschedulable; then q=1; break; fi; done; exit $q'".format(timeout[1], FLAGS.dpt_namespace))
@@ -674,17 +682,21 @@ def Run(benchmark_spec):
       container = FLAGS.dpt_kubernetes_job.rpartition("=")[2]
 
       if events.start_trace.receivers:
-        if not FLAGS.dpt_trace_mode:
-          events.start_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+        try:
+          if not FLAGS.dpt_trace_mode:
+            events.start_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
 
-        elif FLAGS.dpt_trace_mode[0] == "roi":
-          cmd = []
-          for pod1 in pods:
-            cmd.append(f"kubectl logs --ignore-errors --prefix=false -f {pod1} -c {container} --namespace={FLAGS.dpt_namespace}")
-          _TraceByROI(benchmark_spec, controller0, timeout[0], "&".join(cmd))
+          elif FLAGS.dpt_trace_mode[0] == "roi":
+            cmd = []
+            for pod1 in pods:
+              cmd.append(f"kubectl logs --ignore-errors --prefix=false -f {pod1} -c {container} --namespace={FLAGS.dpt_namespace}")
+            _TraceByROI(benchmark_spec, controller0, timeout[0], "&".join(cmd))
 
-        elif FLAGS.dpt_trace_mode[0] == "time":
-          _TraceByTime(benchmark_spec, controller0)
+          elif FLAGS.dpt_trace_mode[0] == "time":
+            _TraceByTime(benchmark_spec, controller0)
+        except Exception as e:
+          logging.warning("Trace Exception: %s", str(e))
+          _SetBreakPoint("TraceFailed")
 
       cmd = []
       for pod1 in pods:
@@ -692,18 +704,22 @@ def Run(benchmark_spec):
         cmd.append(f"kubectl exec --namespace={FLAGS.dpt_namespace} {pod1} -c {container} -- cat /export-logs > {remote_logs_tarfile};x=$?;test $x -ne 0 && r=$x")
 
       try:
+        _SetBreakPoint("ExtractLogs")
         controller0.RemoteCommand("timeout {}s sh -c 'r=0;{};exit $r'".format(timeout[0], ";".join(cmd)))
         pull_logs = True
       except Exception as e:
-        logging.fatal("Exception: %s", str(e))
-        _SetBreakPoint("KubectlExecFailed")
+        logging.fatal("ExtractLogs Exception: %s", str(e))
+        _SetBreakPoint("ExtractLogsFailed")
 
       if events.start_trace.receivers and (not FLAGS.dpt_trace_mode):
-        events.stop_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+        try:
+          events.stop_trace.send(stages.RUN, benchmark_spec=benchmark_spec)
+        except:
+          pass
 
     except Exception as e:
-      logging.fatal("Exception: %s", str(e))
-      _SetBreakPoint("KubectlWaitFailed")
+      logging.fatal("Schedule Exception: %s", str(e))
+      _SetBreakPoint("ScheduleExecFailed")
 
     controller0.RemoteCommand("kubectl get node -o json",
                               ignore_failure=True, should_log=True)
@@ -718,6 +734,8 @@ def Run(benchmark_spec):
       controller0.RemoteCommand(f"kubectl delete namespace {FLAGS.dpt_namespace} --force --wait",
                                 ignore_failure=True)
 
+  _SetBreakPoint("ExtractKPI")
+
   # pull the logs tarfile back
   samples = []
   if pull_logs:
@@ -725,8 +743,8 @@ def Run(benchmark_spec):
     samples = _ParseKPI()
 
   if not samples:
-    _SetBreakPoint("TestFailed")
-    raise Exception("Test failed with no KPI data")
+    _SetBreakPoint("ExtractKPIFailed")
+    raise Exception("KPI Exception: No KPI data")
 
   return samples
 
@@ -745,7 +763,7 @@ def Cleanup(benchmark_spec):
         vm1.RemoteCommand("cd /opt/pkb/vmsetup && sudo ./cleanup.sh {}".format(" ".join(FLAGS.dpt_script_args)))
         vm1.PullFile("{}/vmlogs.tgz".format(local_dir), "/opt/pkb/vmsetup/vmlogs.tgz")
       except Exception as e:
-        logging.warning("Exception: %s", str(e))
+        logging.warning("Cleanup Exception: %s", str(e))
 
   if FLAGS.dpt_docker_image:
     controller0 = _GetWorkers(benchmark_spec.vm_groups)[0]
