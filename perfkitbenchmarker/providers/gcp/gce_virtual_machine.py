@@ -1264,6 +1264,12 @@ class Ubuntu2004BasedGceVirtualMachine(
   DEFAULT_IMAGE_PROJECT = 'ubuntu-os-cloud'
 
 
+class Ubuntu2204BasedGceVirtualMachine(
+    BaseLinuxGceVirtualMachine, linux_vm.Ubuntu2204Mixin):
+  DEFAULT_IMAGE_FAMILY = 'ubuntu-2204-lts'
+  DEFAULT_IMAGE_PROJECT = 'ubuntu-os-cloud'
+
+
 class BaseWindowsGceVirtualMachine(GceVirtualMachine,
                                    windows_virtual_machine.BaseWindowsMixin):
   """Class supporting Windows GCE virtual machines."""

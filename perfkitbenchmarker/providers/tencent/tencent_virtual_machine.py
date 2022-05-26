@@ -377,14 +377,12 @@ class DebianBasedTencentVirtualMachine(TencentVirtualMachine,
                                        linux_virtual_machine.BaseDebianMixin):
   CREATE_NON_ROOT_USER = False
   IMAGE_NAME_MATCH = 'Ubuntu Server 16.04.1 LTS 64'
-  PYTHON_PIP_PACKAGE_VERSION = '9.0.3'
 
 
 class Ubuntu1604BasedTencentVirtualMachine(TencentVirtualMachine,
                                            linux_virtual_machine.Ubuntu1604Mixin):
   CREATE_NON_ROOT_USER = False
   IMAGE_NAME_MATCH = 'Ubuntu Server 16.04.1 LTS 64'
-  PYTHON_PIP_PACKAGE_VERSION = '9.0.3'
 
 
 class Ubuntu1804BasedTencentVirtualMachine(TencentVirtualMachine,
@@ -397,11 +395,17 @@ class Ubuntu2004BasedTencentVirtualMachine(TencentVirtualMachine,
                                            linux_virtual_machine.Ubuntu2004Mixin):
   CREATE_NON_ROOT_USER = False
   IMAGE_NAME_MATCH = 'Ubuntu Server 20.04 LTS 64'
-  PYTHON_PIP_PACKAGE_VERSION = '9.0.3'
 
   def UpdateEnvironmentPath(self):
     # Tencent's image for Ubuntu 20.04 seems to have root-owned files in user home
     self.RemoteCommand('sudo chown -R {0}:{0} /home/{0}'.format(self.user_name))
+
+
+# TODO to be verified
+class Ubuntu2204BasedTencentVirtualMachine(TencentVirtualMachine,
+                                           linux_virtual_machine.Ubuntu2204Mixin):
+  CREATE_NON_ROOT_USER = False
+  IMAGE_NAME_MATCH = 'Ubuntu Server 22.04 LTS 64'
 
 
 class CentOs7BasedTencentVirtualMachine(TencentVirtualMachine,

@@ -123,12 +123,14 @@ X86 = 'x86_64'
 _MACHINE_TYPE_PREFIX_TO_ARM_ARCH = {
     'a1': 'cortex-a72',
     'c6g': 'graviton2',
+    'c7g': 'graviton3',
+    'g5g': 'graviton2',
     'm6g': 'graviton2',
     'r6g': 'graviton2',
-    'c7g': 'graviton3',
     't4g': 'graviton2',
     'im4g': 'graviton2',
     'is4ge': 'graviton2',
+    'x2g': 'graviton2',
 }
 
 # Parameters for use with Elastic Fiber Adapter
@@ -1372,6 +1374,11 @@ class Ubuntu1804EfaBasedAwsVirtualMachine(
 class Ubuntu2004BasedAwsVirtualMachine(UbuntuBasedAwsVirtualMachine,
                                        linux_virtual_machine.Ubuntu2004Mixin):
   IMAGE_NAME_FILTER = 'ubuntu/images/*/ubuntu-focal-20.04-*64-server-20*'
+
+
+class Ubuntu2204BasedAwsVirtualMachine(UbuntuBasedAwsVirtualMachine,
+                                       linux_virtual_machine.Ubuntu2204Mixin):
+  IMAGE_NAME_FILTER = 'ubuntu/images/*/ubuntu-jammy-22.04-*64-server-20*'
 
 
 class JujuBasedAwsVirtualMachine(UbuntuBasedAwsVirtualMachine,

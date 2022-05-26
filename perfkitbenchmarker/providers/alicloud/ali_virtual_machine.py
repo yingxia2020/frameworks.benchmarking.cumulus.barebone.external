@@ -442,6 +442,12 @@ class Ubuntu2004BasedAliVirtualMachine(AliVirtualMachine,
   IMAGE_NAME_FILTER = 'ubuntu_20_04_x64*alibase*.vhd'
 
 
+# TODO to be verified
+class Ubuntu2204BasedAliVirtualMachine(AliVirtualMachine,
+                                       linux_virtual_machine.Ubuntu2204Mixin):
+  IMAGE_NAME_FILTER = 'ubuntu_22_04_x64*alibase*.vhd'
+
+
 class CentOs7BasedAliVirtualMachine(AliVirtualMachine,
                                     linux_virtual_machine.CentOs7Mixin):
   IMAGE_NAME_FILTER = 'centos_7_09_x64*alibase*.vhd'

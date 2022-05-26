@@ -42,6 +42,10 @@ default_single_core: &default_single_core
     machine_type: Small
     zone: ZONE_1
     image: null
+  Tencent:
+    machine_type: S2.SMALL1
+    zone: ap-shanghai-2
+    image: null
   Docker:
     image: null
     machine_type:
@@ -50,6 +54,8 @@ default_single_core: &default_single_core
   IBMCloud:
     machine_type: cx2-2x4
     zone: us-south-1
+    image: null
+  Yandex:
     image: null
 
 # TODO: update the two core machines for more providers
@@ -66,6 +72,10 @@ default_dual_core: &default_dual_core
     machine_type: m5.large
     zone: us-east-1
     image: null
+  Tencent:
+    machine_type: S2.MEDIUM2
+    zone: ap-shanghai-2
+    image: null
   Docker:
     image: null
     machine_type:
@@ -75,11 +85,70 @@ default_dual_core: &default_dual_core
     machine_type: ecs.g5.xlarge
     zone: cn-beijing-g
     image: null
+  Kubernetes:
+    image: null
+
+# TODO: Add cloud providers as needed
+default_high_compute: &default_high_compute
+  GCP:
+    machine_type: c2-standard-60
+    zone: us-central1-a
+    image: null
+  Azure:
+    machine_type: Standard_F72s_v2
+    zone: eastus2
+    image: null
+  AWS:
+    machine_type: c5.18xlarge
+    boot_disk_size: 100
+    zone: us-east-2
+    image: null
+  Tencent:
+    machine_type: S5.16XLARGE192
+    zone: ap-nanjing-2
+    image: null
+  AliCloud:
+    machine_type: ecs.g6.26xlarge
+    zone: cn-beijing-g
+    image: null
+  Kubernetes:
+    image: null
+
+# TODO: Add hisgh speed disks as needed
+default_disk_300gb_high_speed: &default_disk_300gb_high_speed
+  GCP:
+    disk_type: pd-ssd
+    disk_size: 300
+    mount_point: /scratch
+  Azure:
+    disk_type: Premium_LRS
+    disk_size: 300
+    mount_point: /scratch
+  AWS:
+    disk_type: io1
+    disk_size: 300
+    iops: 15000
+    mount_point: /scratch
+  Tencent:
+    disk_type: CLOUD_SSD
+    disk_size: 300
+    mount_point: /scratch
+  AliCloud:
+    disk_type: cloud_essd
+    disk_size: 300
+    mount_point: /scratch
+  Kubernetes:
+    disk_type: emptyDir
+    disk_size: 300
+    mount_point: /scratch
   IBMCloud:
     machine_type: cx2-4x8
     zone: us-south-1
     image: null
-
+  Yandex:
+    disk_type: network-ssd
+    disk_size: 300
+    mount_point: /scratch
 # TODO(user): update the disk types below as more providers are
 # updated for the disk types refactor.
 default_500_gb: &default_500_gb
@@ -126,12 +195,20 @@ default_500_gb: &default_500_gb
     disk_type: standard
     disk_size: 500
     mount_point: /scratch
+  Tencent:
+    disk_type: CLOUD_PREMIUM
+    disk_size: 500
+    mount_point: /scratch
   Docker:
     disk_type: local
     disk_size: 500
     mount_point: /scratch
   IBMCloud:
     disk_type: standard
+    disk_size: 500
+    mount_point: /scratch
+  Yandex:
+    disk_type: network-hdd
     disk_size: 500
     mount_point: /scratch
 
@@ -182,10 +259,99 @@ default_50_gb: &default_50_gb
     disk_type: standard
     disk_size: 50
     mount_point: /scratch
+  Tencent:
+    disk_type: CLOUD_PREMIUM
+    disk_size: 50
+    mount_point: /scratch
   Docker:
     disk_type: local
     disk_size: 50
     mount_point: /scratch
+  Yandex:
+    disk_type: network-hdd
+    disk_size: 50
+    mount_point: /scratch
+
+# Using a default head_node vm_spec config for all HPC workloads
+default_hpc_head_node_vm_spec: &default_hpc_head_node_vm_spec
+  AWS:
+    machine_type: c5.9xlarge
+    zone: us-east-2
+    image: null
+    boot_disk_size: 200
+  GCP:
+    machine_type: n1-highcpu-36
+    zone: us-central1-a
+    image: null
+    boot_disk_size: 200
+  Azure:
+    machine_type: Standard_F72s_v2
+    zone: eastus2
+    image: null
+    boot_disk_size: 200
+  Tencent:
+    machine_type: S5.LARGE8
+    zone: ap-nanjing-1
+    image: null
+
+# Using a default compute_nodes vm_spec config for all HPC workloads
+default_hpc_compute_nodes_vm_spec: &default_hpc_compute_nodes_vm_spec
+  AWS:
+    machine_type: c5.18xlarge
+    zone: us-east-2
+    image: null
+    boot_disk_size: 200
+  GCP:
+    machine_type: n1-highcpu-96
+    zone: us-central1-a
+    image: null
+    boot_disk_size: 200
+  Azure:
+    machine_type: Standard_F72s_v2
+    zone: eastus2
+    image: null
+    boot_disk_size: 200
+  Tencent:
+    machine_type: S5.LARGE8
+    zone: ap-nanjing-1
+    image: null
+
+# Using a default head_node disk_spec config for all HPC workloads
+default_hpc_head_node_disk_spec: &default_hpc_head_node_disk_spec
+  AWS:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  Azure:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  GCP:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  Tencent:
+    disk_type: CLOUD_SSD
+    disk_size: 200
+    mount_point: /scratch
+
+# Using a default compute_nodes disk_spec config for all HPC workloads
+default_hpc_compute_nodes_disk_spec: &default_hpc_compute_nodes_disk_spec
+  AWS:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  Azure:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  GCP:
+    disk_type: standard
+    disk_size: 200
+    mount_point: /scratch
+  Tencent:
+    disk_type: CLOUD_SSD
+    disk_size: 200
   IBMCloud:
     disk_type: standard
     disk_size: 50
