@@ -40,8 +40,8 @@ flags.DEFINE_boolean('edp_publish', False,
                      'Optional, EDP csv files will be published to zip file if provided and --intel-publish is applied')
 flags.DEFINE_boolean('emon_debug', False,
                      'Optional, for debugging EMON driver, build, collection, and post processing. eg --emon_debug')
-flags.DEFINE_enum('emon_package_version', '5_33_linux_0316081130eb678',
-                  ['5_29_linux_09162200a7108a4', '5_33_linux_0316081130eb678'],
+flags.DEFINE_enum('emon_package_version', '5_34_linux_050122015feb2b5',
+                  ['5_29_linux_09162200a7108a4', '5_33_linux_0316081130eb678', '5_34_linux_050122015feb2b5'],
                   'Specify the internal emon version')
 FLAGS = flags.FLAGS
 

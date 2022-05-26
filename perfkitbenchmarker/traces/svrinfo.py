@@ -14,7 +14,7 @@ from perfkitbenchmarker import vm_util
 
 SVRINFO_BINARY_NAME = "svr-info"
 SVRINFO_DIRECTORY_NAME = "svr-info"
-SVRINFO_ARCHIVE_URL = "https://cumulus.s3.us-east-2.amazonaws.com/svr_info/svr-info-internal-2.0.0.tgz"
+SVRINFO_ARCHIVE_URL_S3_BUCKET = "https://cumulus.s3.us-east-2.amazonaws.com/svr_info/"
 
 flags.DEFINE_boolean('svrinfo', True,
                      'Run svrinfo on VMs.')
@@ -26,6 +26,9 @@ flags.DEFINE_string('svrinfo_tarball', None,
                     'Local path to svr_info tarball.')
 flags.DEFINE_string('svrinfo_url', None,
                     'URL for downloading svr_info tarball.')
+flags.DEFINE_enum('svrinfo_package_version', 'svr-info-internal-2.0.1.tgz',
+                  ['svr-info-internal-2.0.1.tgz'],
+                  'Specify the internal svrinfo version')
 FLAGS = flags.FLAGS
 
 
@@ -76,7 +79,8 @@ def _GetLocalArchive():
     logging.info("svrinfo_tarball specified: {}".format(FLAGS.svrinfo_tarball))
     local_archive_path = FLAGS.svrinfo_tarball
   else:
-    url = FLAGS.svrinfo_url or SVRINFO_ARCHIVE_URL
+    svrinfo_archive_url = SVRINFO_ARCHIVE_URL_S3_BUCKET + FLAGS.svrinfo_package_version
+    url = FLAGS.svrinfo_url or svrinfo_archive_url
     logging.info("downloading svrinfo from: {}".format(url))
     filename = os.path.basename(urlparse(url).path)
     local_archive_path = posixpath.join(_GetLocalInstallPath(), filename)
