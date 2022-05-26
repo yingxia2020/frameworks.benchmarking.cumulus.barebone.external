@@ -79,6 +79,7 @@ class TencentDisk(disk.BaseDisk):
       raise TencentCloudDiskUnknownCLIRetryableError
     self.id = response['DiskIdSet'][0]
     self.disk_recently_created = True
+    util.AddDefaultTags(self.id, self.region)
 
   @vm_util.Retry(poll_interval=5, log_errors=False, max_retries=10,
                  retryable_exceptions=(TencentCloudDiskUnknownCLIRetryableError))

@@ -115,6 +115,7 @@ class TencentVpc(resource.BaseResource):
 
   def _PostCreate(self):
     """Looks up the VPC default security group."""
+    util.AddDefaultTags(self.id, self.region)
     return
 
   @vm_util.Retry(poll_interval=5, log_errors=False, max_retries=5,
@@ -202,6 +203,7 @@ class TencentSubnet(resource.BaseResource):
       logging.warn("Encountered unexpected return from command '{}', retrying.".format(e))
       raise TencentCloudNetworkUnknownCLIRetryableError
     self.id = response['Subnet']['SubnetId']
+    util.AddDefaultTags(self.id, self.region)
 
   def _Delete(self):
     """Deletes the subnet."""

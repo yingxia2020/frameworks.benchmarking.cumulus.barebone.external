@@ -15,8 +15,9 @@
 """Utilities for working with Tencent Cloud resources."""
 
 
-import shlex
 import re
+import shlex
+import six
 
 from perfkitbenchmarker import errors
 from absl import flags
@@ -26,6 +27,7 @@ TENCENT_PATH = 'tccli'
 TENCENT_PREFIX = [TENCENT_PATH]
 # Tencent positional args such as 'vpc' and 'CreateVpc' must come before flags, so format flag must come later.
 TENCENT_SUFFIX = ['--output', 'json']
+INSTANCE = 'instance'
 FLAGS = flags.FLAGS
 
 ADD_USER_TEMPLATE = '''#!/bin/bash
@@ -82,3 +84,42 @@ def IssueRetryableCommand(cmd, env=None):
     raise errors.VmUtil.CalledProcessException(
         'The command had output on stderr:\n%s' % stderr)
   return stdout, stderr
+
+
+def AddTags(resource_id, region, **kwargs):
+  """Adds tags to a Tencent cloud resource created by PerfKitBenchmarker.
+
+  Args:
+    resource_id: An extant Tencent cloud resource to operate on.
+    region: The Tencent cloud region 'resource_id' was created in.
+    **kwargs: dict. Key-value pairs to set on the instance.
+  """
+  if not kwargs:
+    return
+
+  tag_cmd = TENCENT_PREFIX + [
+      'tag', 'AddResourceTag',
+      '--Resource', f'qcs::cvm:{region}::{INSTANCE}/{resource_id}'
+  ]
+  for _, (key, value) in enumerate(six.iteritems(kwargs)):
+    tmp_cmd = tag_cmd.copy()
+    tmp_cmd.extend([
+        '--TagKey', str(key),
+        '--TagValue', str(value)
+    ])
+    vm_util.IssueRetryableCommand(tmp_cmd)
+
+
+def AddDefaultTags(resource_id, region):
+  """Adds tags to a Tencent cloud resource created by PerfKitBenchmarker.
+
+  By default, resources are tagged with "owner" and "perfkitbenchmarker-run"
+  key-value
+  pairs.
+
+  Args:
+    resource_id: An extant Tencent cloud resource to operate on.
+    region: The Tencent cloud region 'resource_id' was created in.
+  """
+  tags = {'owner': FLAGS.owner, 'perfkitbenchmarker-run': FLAGS.run_uri}
+  AddTags(resource_id, region, **tags)

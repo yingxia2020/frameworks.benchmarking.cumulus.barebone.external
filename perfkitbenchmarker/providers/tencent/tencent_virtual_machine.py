@@ -187,6 +187,7 @@ class TencentVirtualMachine(virtual_machine.BaseVirtualMachine):
         raise TencentCloudUnknownCLIRetryableError
 
     self.id = response['InstanceIdSet'][0]
+    util.AddDefaultTags(self.id, self.region)
 
   @vm_util.Retry(poll_interval=5, log_errors=False, max_retries=5,
                  retryable_exceptions=(TencentCloudUnknownCLIRetryableError,))
