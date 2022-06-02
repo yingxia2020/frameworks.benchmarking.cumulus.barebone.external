@@ -14,14 +14,19 @@
 
 """Package for installing the AWS CLI."""
 
-AWSCLI_URL = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+AWSCLI_URL_FMT = "https://awscli.amazonaws.com/awscli-exe-linux-{arch}.zip"
 AWSCLI_ZIP = "awscliv2.zip"
 
 
 def Install(vm):
   """Installs the awscli package on the VM."""
+  uname = vm.RemoteCommand('uname -m')[0].strip()
+  if uname != 'x86_64' and uname != 'aarch64':
+    raise NotImplementedError("unsupported architecture: {}".format(uname))
+
   vm.InstallPackages("unzip")
-  vm.RemoteCommand(f"curl {AWSCLI_URL} -o {AWSCLI_ZIP} && unzip {AWSCLI_ZIP}")
+  cli_url = AWSCLI_URL_FMT.format(arch=uname)
+  vm.RemoteCommand(f"curl {cli_url} -o {AWSCLI_ZIP} && unzip {AWSCLI_ZIP}")
   vm.RemoteCommand("sudo ./aws/install")
   # Clean up unused files
   vm.RemoteCommand(f"rm -rf aws {AWSCLI_ZIP}")
